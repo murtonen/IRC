@@ -20,11 +20,10 @@ public class IRC {
     public static void main(String[] args) {
         SwingUtilities.invokeLater(new Runnable() {
             public void run() {
-                IRCView v = new IRCView();
-                IRCController c = new IRCController(v);
-                
                 try {
-                    IRCModel m = new IRCModel(v);
+                    IRCModel m = new IRCModel();
+                    IRCView v = new IRCView(m);
+                    IRCController c = new IRCController(m,v);
                 } catch (Exception ex) {
                     Logger.getLogger(IRC.class.getName()).log(Level.SEVERE, null, ex);
                 }

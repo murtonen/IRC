@@ -10,24 +10,23 @@ import org.jibble.pircbot.*;
  * @author Ville Murtonen
  */
 public class MyServer extends PircBot {
-        IRCView v;
+        IRCModel m;
+        String lastText;
+        String lastChannel;
         
-    public MyServer(IRCView view) {
-        v = view;
+    public MyServer(IRCModel model) {
+        m = model;
         this.setName("WildeBot");
     }
     
     public void onMessage(String channel, String sender,
                        String login, String hostname, String message) {
-        v.addText(message);
+        lastText = sender+": "+message;
+        m.newText();
     }
     
     public void onUserList(String channel, User[] users) {
-        int koko = users.length;
-        String user = "";
-        for ( int i = 0; i < koko;i++) {
-            users[i].getNick()
-        }
-        
+        lastChannel = channel;
+        m.updateUserList();
     }
 }
