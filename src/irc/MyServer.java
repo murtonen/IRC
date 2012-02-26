@@ -16,7 +16,7 @@ public class MyServer extends PircBot {
         
     public MyServer(IRCModel model) {
         m = model;
-        this.setName("WildeBot");
+        this.setName("Abc12345");
     }
     
     public void onMessage(String channel, String sender,
@@ -28,5 +28,13 @@ public class MyServer extends PircBot {
     public void onUserList(String channel, User[] users) {
         lastChannel = channel;
         m.updateUserList();
+    }
+    
+    public void onTopic(String channel, String topic, String setBy, long date, boolean changed) {
+        m.updateTopic(channel,topic);
+    }
+    
+    public void newNick(String nick) {
+        this.setName(nick);   
     }
 }
