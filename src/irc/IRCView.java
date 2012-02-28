@@ -20,11 +20,12 @@ import javax.swing.event.ChangeListener;
 import org.jibble.pircbot.IrcException;
 import org.jibble.pircbot.User;
 
+    
 /**
  *
  * @author Ville Murtonen
  */
-public class IRCView extends JPanel implements MouseListener,Observer,ChangeListener {
+public class IRCView extends JPanel implements MouseListener,Observer {
     
         // Paalayoutti
         JTextField topic,input;
@@ -68,7 +69,7 @@ public class IRCView extends JPanel implements MouseListener,Observer,ChangeList
         int serverAmount;
         
         // ScrollPane
-        JScrollPane nickScrollPane;
+        JScrollPane nickScrollPane,defaultScrollPane;
         
         // MenuButtonGroup
         ButtonGroup serverGroup;
@@ -95,6 +96,7 @@ public class IRCView extends JPanel implements MouseListener,Observer,ChangeList
         input = new JTextField(40);
         input.setActionCommand("input");
         topic.setEditable(false);
+        topic.setText("Welcome to ACE!");
         
         // Nick listing
         listModel = new DefaultListModel();
@@ -110,6 +112,7 @@ public class IRCView extends JPanel implements MouseListener,Observer,ChangeList
         channels[chanAmount] = new JTextArea(30,30);
         channelNames[chanAmount] = new String("Default");
         channelTopics = new String[30];
+        channelTopics[0] = "Default";
         
         // Lisätään vähän tervetuloa defaulttiin.
         channels[0].append("Welcome to Awesome irc Client Experience!\n");
@@ -130,8 +133,8 @@ public class IRCView extends JPanel implements MouseListener,Observer,ChangeList
         chanList = new JTabbedPane();
         defaultti = new JPanel(new BorderLayout());
         defaultti.add(channels[chanAmount]);
-        chanList.addTab("Default",defaultti);
-        chanList.addChangeListener(this);
+        defaultScrollPane = new JScrollPane(defaultti);
+        chanList.addTab("Default",defaultScrollPane);
         activeTab = 0;
         
        
@@ -232,6 +235,7 @@ public class IRCView extends JPanel implements MouseListener,Observer,ChangeList
     public void update(Observable o, Object arg) {
         String msg = (String)arg;
         String channel;
+        String topicChannel;
         String topik;
         String newnick;
         if ( msg.equals("newText")) {
@@ -239,16 +243,18 @@ public class IRCView extends JPanel implements MouseListener,Observer,ChangeList
         } else if (msg.equals("userChange")) {
             changeUsers(m.getUsers());
         } else if (msg.equals("newTopic")) {
-            channel = m.getTopicChannel();
+            topicChannel = m.getTopicChannel();
             topik = m.getTopic();
-            for ( int i = 0;i < chanAmount;i++) {
-                if (channel.equals(channelNames[i])) {
-                    channelTopics[i] = topik;
+            for ( int i = 0;i <= chanAmount;i++) {
+                if ( channelNames[i] != null ) {
+                    if (topicChannel.equals(channelNames[i])) {
+                        channelTopics[i] = topik;
+                    }
+                    if (topicChannel.equals(channelNames[activeTab])) {
+                        channelTopics[activeTab]=topik;
+                        topic.setText(topik);
+                    }
                 }
-            }
-            if (channel.equals(channelNames[activeTab])) {
-                channelTopics[activeTab]=topik;
-                topic.setText(topik);
             }
         } else if (msg.equals("nickInUse")) {
             newnick = nickUsed();
@@ -258,6 +264,23 @@ public class IRCView extends JPanel implements MouseListener,Observer,ChangeList
             } catch (IrcException ex) {
                 Logger.getLogger(IRCView.class.getName()).log(Level.SEVERE, null, ex);
             }
+        } else if (msg.equals("newLogLine")) {
+            channels[0].append(m.getLogLine()+"\n");
+        } else if (msg.equals("newChanMode")) {
+            String response = m.getResponse();
+            String splitted[] = response.split(" ");
+            channel = splitted[1];
+            String mode = splitted[2];
+            for ( int j = 0;j <= chanAmount;j++) {
+                if (channelNames[j] != null ) {
+                }
+                if (channel.equals(channelNames[j])) {
+                    String newTopic = channel+" "+mode;
+                    chanList.setTitleAt(j,newTopic);
+                }
+            }
+        } else {
+            System.out.println(msg);
         }
     }
     
@@ -301,21 +324,27 @@ public class IRCView extends JPanel implements MouseListener,Observer,ChangeList
         Quit.addActionListener(l);
     }
     
-    public void stateChanged(ChangeEvent e) {
-        JTabbedPane pane = (JTabbedPane)e.getSource();
-
-        // Get current tab
-        int sel = pane.getSelectedIndex();
-        activeTab = sel;
-        listModel.clear();
-        if (channelTopics[activeTab] != null ) {
-            topic.setText(channelTopics[activeTab]);
-        } else {
-            topic.setText("");
-        }
-        changeUsers(m.getUsersChannel(channelNames[activeTab]));
+    public void setKickListener(ActionListener l) {
+        kick.addActionListener(l);
+    }
+    public void setBanListener(ActionListener l) {
+        ban.addActionListener(l);
+    }
+    public void setOpListener(ActionListener l) {
+        op.addActionListener(l);
+    }
+    public void setVoiceListener(ActionListener l) {
+        voice.addActionListener(l);
     }
     
+    public void setChanListListener(ChangeListener c) {
+        chanList.addChangeListener(c);
+    }
+    
+    public int getSelectedPaneIndex() {
+        return chanList.getSelectedIndex();
+    }
+        
     public String getInput() {
         String paluu = input.getText();
         input.setText("");
@@ -327,6 +356,7 @@ public class IRCView extends JPanel implements MouseListener,Observer,ChangeList
         channelNames[chanAmount]=new String(nimi);
         chanList.add(nimi,addPanel()); 
         chanList.setSelectedIndex(chanAmount);
+        channels[chanAmount].append("Joined channel: "+nimi);       
     }
     
     public JPanel addPanel() {
@@ -380,5 +410,34 @@ public class IRCView extends JPanel implements MouseListener,Observer,ChangeList
         serverGroup.add(buttonList[serverAmount]);
         Server.add(buttonList[serverAmount]);
         serverAmount++;
+    }
+
+    public String getTarget() {
+        return (String)listModel.getElementAt(nickPanel.getSelectedIndex());
+    }
+
+    public void clearListModel() {
+        listModel.clear();
+    }
+
+    public void channelChange(int sel) {
+        if (channelTopics[sel] != null ) {
+            topic.setText(channelTopics[sel]);
+        } else {
+            topic.setText("");
+        }
+        changeUsers(m.getUsersChannel(channelNames[sel]));
+    }
+
+    String getJoinChannel() {
+        String n = (String)JOptionPane.showInputDialog(
+                    frame,
+                    "Enter channel to join: ","Join new channel", 1);
+        
+        return n; 
+    }
+
+    void setActiveTab(int sel) {
+        activeTab=sel;
     }
 }

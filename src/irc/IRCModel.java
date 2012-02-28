@@ -23,13 +23,21 @@ public class IRCModel extends Observable {
         private final String newText = "newText";
         private final String newTopic = "newTopic";
         private final String nickInUse = "nickInUse";
+        private final String newLogLine = "newLogLine";
+        private final String newChanMode = "newChanMode";
+        private final String newMode = "newMode";
+        
         
         // Debuggausta varten
         MyServer ircnet;
         
-        // Topic ja Channel
+        // Strings
         String topic;
         String channel;
+        String activeChannel;
+        String logline;
+        String response;
+        String topicChannel;
         
         // ServerLista ja servereiden määrä
         MyServer[] serverList;
@@ -41,6 +49,12 @@ public class IRCModel extends Observable {
         serverAmount = 0;
         activeServer = 0;
         serverList = new MyServer[10];
+        logline = "";
+        activeChannel = "Default";
+        channel = "";
+        topic = "";
+        response = "";
+        topicChannel= "";
         
         // Now start our bot up.
         //ircnet = new MyServer(this);
@@ -53,6 +67,10 @@ public class IRCModel extends Observable {
         
         // Join the #pircbot channel.
         // ircnet.joinChannel("#omatkanavat");
+    }
+    
+    public void setActiveServer(int index) {
+        activeServer = index;
     }
     
     public void updateUserList() {
@@ -71,6 +89,8 @@ public class IRCModel extends Observable {
     
     public void joinChannel (String nimi) {
         serverList[activeServer].joinChannel(nimi);
+        activeChannel = nimi;
+        serverList[activeServer].sendRawLine("MODE " + nimi);
     }
     
     public String getLine() {
@@ -89,23 +109,22 @@ public class IRCModel extends Observable {
         return serverList[activeServer].getNick();
     }
     
-    void updateTopic(String c, String t) {
-        channel = c;
+    public void updateTopic(String c, String t) {
+        topicChannel = c;
         topic = t;
         setChanged();
         notifyObservers(newTopic);
     }
 
-    String getTopicChannel() {
-        return channel;
+    public String getTopicChannel() {
+        return topicChannel;
     }
 
-    String getTopic() {
+    public String getTopic() {
         return topic;
     }
 
     public void connectToServer(String server, String n) throws IrcException {
-        System.out.println("Connecting to server!");
         String nick = n;
         serverList[serverAmount] = new MyServer(this);
         serverList[serverAmount].setVerbose(true);
@@ -122,11 +141,11 @@ public class IRCModel extends Observable {
         serverAmount++;
     }
 
-    void changeNick(String newnick) {
+    public void changeNick(String newnick) {
         serverList[activeServer].newNick(newnick);
     }
 
-    void reconnect() throws IrcException {
+    public void reconnect() throws IrcException {
         try {
             serverList[activeServer].reconnect();
         } catch (IOException ex) {
@@ -135,4 +154,38 @@ public class IRCModel extends Observable {
             Logger.getLogger(IRCModel.class.getName()).log(Level.SEVERE, null, ex);
         }
     }
+
+    public void updateMode(String channel, String mode) {
+        setChanged();
+        notifyObservers(newMode);
+    }
+
+    public void kickTarget(String nick) {
+        serverList[activeServer].kick(activeChannel, nick);
+    }
+
+    public void setActiveChannel(String string) {
+        activeChannel = string;
+    }
+
+    public void sendLogLine(String line) {
+        logline = line;
+        setChanged();
+        notifyObservers(newLogLine);
+    }
+    
+    public String getLogLine() {
+        return logline;
+    }
+
+    public void channelModeNotify(String r) {
+        response = r;
+        setChanged();
+        notifyObservers(newChanMode);
+    }
+    
+    public String getResponse() {
+        return response;
+    }
+    
 }

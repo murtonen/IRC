@@ -37,4 +37,22 @@ public class MyServer extends PircBot {
     public void newNick(String nick) {
         this.setName(nick);   
     }
+    
+    public void onMode(String channel,
+                      String sourceNick,
+                      String sourceLogin,
+                      String sourceHostname,
+                      String mode) {
+        m.updateMode(channel,mode);
+    }
+    
+    public void log(String line) {
+        m.sendLogLine(line);
+    }
+    
+    public void onServerResponse(int code, String response) {
+        if ( code == 324 ) {
+            m.channelModeNotify(response);
+        }
+    }
 }
