@@ -56,17 +56,6 @@ public class IRCModel extends Observable {
         response = "";
         topicChannel= "";
         
-        // Now start our bot up.
-        //ircnet = new MyServer(this);
-        
-        // Enable debugging output.
-        //ircnet.setVerbose(true);
-        
-        // Connect to the IRC server.
-        //ircnet.connect("irc.inet.fi");
-        
-        // Join the #pircbot channel.
-        // ircnet.joinChannel("#omatkanavat");
     }
     
     public void setActiveServer(int index) {
