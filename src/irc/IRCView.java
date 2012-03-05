@@ -9,13 +9,13 @@ import java.awt.Dimension;
 import java.awt.event.ActionListener;
 import java.awt.event.MouseEvent;
 import java.awt.event.MouseListener;
+import java.util.ArrayList;
 import java.util.Observable;
 import java.util.Observer;
 import java.util.logging.Level;
 import java.util.logging.Logger;
 import javax.swing.*;
 import javax.swing.border.TitledBorder;
-import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 import org.jibble.pircbot.IrcException;
 import org.jibble.pircbot.User;
@@ -39,7 +39,7 @@ public class IRCView extends JPanel implements MouseListener,Observer {
         // JmenuBar
         JMenuBar menuBar;
         JMenu File,Server;
-        JMenuItem Connect,Disconnect,Quit;
+        JMenuItem Connect,Disconnect,Reconnect,Quit;
         
         // Panels
         JPanel northPanel;
@@ -50,13 +50,13 @@ public class IRCView extends JPanel implements MouseListener,Observer {
         
         // PopUpMenu
         JPopupMenu popup;
-        JMenuItem kick,ban,op,voice;
+        JMenuItem kick,ban,unban,op,voice;
         
         // Model
         IRCModel m;
         
         // Jbutton
-        JButton Join,Part;
+        JButton Join,Part,ConnectB,DisconnectB,ReconnectB,QuitB;
         
         // Lists for Channels
         JTextArea[] channels;
@@ -67,6 +67,7 @@ public class IRCView extends JPanel implements MouseListener,Observer {
         int activeTab;
         int chanAmount;
         int serverAmount;
+        int selectedServer;
         
         // ScrollPane
         JScrollPane nickScrollPane,defaultScrollPane;
@@ -128,7 +129,6 @@ public class IRCView extends JPanel implements MouseListener,Observer {
         westPanel = new JPanel();
         westPanel.setLayout(new BoxLayout(westPanel,BoxLayout.Y_AXIS));
         
-        
         // JTabbedPane
         chanList = new JTabbedPane();
         defaultti = new JPanel(new BorderLayout());
@@ -168,6 +168,7 @@ public class IRCView extends JPanel implements MouseListener,Observer {
         // Ja niihin sisalto
         Connect = new JMenuItem("Connect");
         Disconnect = new JMenuItem("Disconnect");
+        Reconnect = new JMenuItem("Reconnect");
         Quit = new JMenuItem("Quit");
 
         // ButtonGroup
@@ -177,26 +178,57 @@ public class IRCView extends JPanel implements MouseListener,Observer {
         // Ja laitetaan menuun
         File.add(Connect);
         File.add(Disconnect);
+        File.add(Reconnect);
         File.add(Quit);
         
         
         // PopUpMenu
         popup = new JPopupMenu();
         kick = new JMenuItem("Kick");
-        ban = new JMenuItem("Ban/Deban");
+        ban = new JMenuItem("Ban");
+        unban = new JMenuItem("UnBan");
         op = new JMenuItem("Op/DeOp");
         voice = new JMenuItem("Voice/DeVoice");
                 
         popup.add(kick);
         popup.add(ban);
+        popup.add(unban);
         popup.add(op);
         popup.add(voice);
         
         // Jbutton
         Join = new JButton("Join");
+        Join.setPreferredSize(new Dimension(100,25));
+        Join.setMinimumSize(new Dimension(100,25));
+        Join.setMaximumSize(new Dimension(100,25));
         Part = new JButton("Part");
+        Part.setPreferredSize(new Dimension(100,25));
+        Part.setMinimumSize(new Dimension(100,25));
+        Part.setMaximumSize(new Dimension(100,25));
+        ConnectB = new JButton("Connect");
+        ConnectB.setPreferredSize(new Dimension(100,25));
+        ConnectB.setMinimumSize(new Dimension(100,25));
+        ConnectB.setMaximumSize(new Dimension(100,25));
+        DisconnectB = new JButton("Disconnect");
+        DisconnectB.setPreferredSize(new Dimension(100,25));
+        DisconnectB.setMinimumSize(new Dimension(100,25));
+        DisconnectB.setMaximumSize(new Dimension(100,25));
+        ReconnectB = new JButton("Reconnect");
+        ReconnectB.setPreferredSize(new Dimension(100,25));
+        ReconnectB.setMinimumSize(new Dimension(100,25));
+        ReconnectB.setMaximumSize(new Dimension(100,25));
+        QuitB = new JButton("Quit");
+        QuitB.setPreferredSize(new Dimension(100,25));
+        QuitB.setMinimumSize(new Dimension(100,25));
+        QuitB.setMaximumSize(new Dimension(100,25));
+        
+        westPanel.add(ConnectB);
+        westPanel.add(DisconnectB);
+        westPanel.add(ReconnectB);
+        westPanel.add(QuitB);
         westPanel.add(Join);
         westPanel.add(Part);
+        
         
         
         // Laitetaan frameen Jpanelit
@@ -238,9 +270,12 @@ public class IRCView extends JPanel implements MouseListener,Observer {
         String topicChannel;
         String topik;
         String newnick;
+        // TODO: TÄMÄ EI TOIMI, LÄHETTÄÄ KAIKKI ACTIVETABIIN!!!
         if ( msg.equals("newText")) {
             addLine(m.getLine());
         } else if (msg.equals("userChange")) {
+            System.out.println("Cleared listmodel");
+            listModel.clear();
             changeUsers(m.getUsers());
         } else if (msg.equals("newTopic")) {
             topicChannel = m.getTopicChannel();
@@ -279,8 +314,38 @@ public class IRCView extends JPanel implements MouseListener,Observer {
                     chanList.setTitleAt(j,newTopic);
                 }
             }
+        } else if (msg.equals("disconnected")) {
+            int index;
+            int remove = this.getSelectedServer();
+            ArrayList toBeRemoved=m.getServerChannels(selectedServer);
+            for (int k = 0;k < toBeRemoved.size();k++) {
+                index = (Integer)toBeRemoved.get(k);
+                chanList.remove(index);
+            }
+            Server.remove(buttonList[remove]);
+            buttonList[serverAmount].setSelected(true);
+        }  else if ( msg.equals("privateMessage")) {
+            String sender = m.getSender();
+            String message = m.getMessage();
+            boolean found = false;
+            for (int l=0;l < chanAmount;l++) {
+                if ( channelNames[l] != null ) {
+                    if ( channelNames[l].equals(sender)) {
+                        channels[l].append(sender+": "+message+"\n");
+                        found = true;
+                    }
+                }
+            }
+            if (found == false) {
+                this.joinChannel(sender);
+                channels[chanAmount].append(sender+": "+message+"\n");
+            }
+        } else if ( msg.equals("joinPart")) {
+            System.out.println("Cleared listmodel");
+            listModel.clear();
+            changeUsers(m.getUsersChannel(m.getJoinPartChannel()));
         } else {
-            System.out.println(msg);
+            //System.out.println(msg);
         }
     }
     
@@ -290,15 +355,23 @@ public class IRCView extends JPanel implements MouseListener,Observer {
     
     public void changeUsers(User[] users) {
         int koko = users.length;
+        String prefix = "";
         for (int i = 0;i<koko;i++) {
-            addNick(users[i].getNick());
+            if (users[i].isOp()) {
+                prefix = "@";
+            } else if ( users[i].hasVoice()) {
+                prefix = "+";
+            } else {
+                prefix = "";
+            }
+            addNick(users[i].getNick(),prefix);
         }
-        nickScrollPane.repaint();
-        nickScrollPane.revalidate();
     }
     
-    public void addNick(String nick) {
-        listModel.addElement((String)nick);
+    public void addNick(String nick,String prefix) {
+        String element = prefix+nick;
+        System.out.println("Added to ListModel: "+element);
+        listModel.addElement((String)element);
         
     }
     
@@ -308,28 +381,41 @@ public class IRCView extends JPanel implements MouseListener,Observer {
         Join.addActionListener(l); 
     }
     
+    public void setPartButtonListener(ActionListener l) {
+        Part.addActionListener(l);
+    }
+    
     public void setInputAreaListener(ActionListener l) {
         input.addActionListener(l);
     }
     
     public void setConnectListener(ActionListener l) {
         Connect.addActionListener(l);
+        ConnectB.addActionListener(l);
     }
     
-    public void setDisonnectListener(ActionListener l) {
+    public void setDisconnectListener(ActionListener l) {
         Disconnect.addActionListener(l);
+        DisconnectB.addActionListener(l);
     }
     
     public void setQuitListener(ActionListener l) {
         Quit.addActionListener(l);
+        QuitB.addActionListener(l);
     }
     
     public void setKickListener(ActionListener l) {
         kick.addActionListener(l);
     }
+    
     public void setBanListener(ActionListener l) {
         ban.addActionListener(l);
     }
+    
+    public void setUnBanListener(ActionListener l) {
+        unban.addActionListener(l);
+    }
+    
     public void setOpListener(ActionListener l) {
         op.addActionListener(l);
     }
@@ -351,12 +437,13 @@ public class IRCView extends JPanel implements MouseListener,Observer {
         return paluu;
     }
     
-    public void joinChannel(String nimi) {
+    public int joinChannel(String nimi) {
         chanAmount++;
         channelNames[chanAmount]=new String(nimi);
         chanList.add(nimi,addPanel()); 
         chanList.setSelectedIndex(chanAmount);
-        channels[chanAmount].append("Joined channel: "+nimi);       
+        channels[chanAmount].append("Joined channel: "+nimi+"\n");       
+        return chanAmount;
     }
     
     public JPanel addPanel() {
@@ -417,6 +504,7 @@ public class IRCView extends JPanel implements MouseListener,Observer {
     }
 
     public void clearListModel() {
+        System.out.println("Cleared listmodel");
         listModel.clear();
     }
 
@@ -428,8 +516,19 @@ public class IRCView extends JPanel implements MouseListener,Observer {
         }
         changeUsers(m.getUsersChannel(channelNames[sel]));
     }
-
-    String getJoinChannel() {
+    
+    public void updateUsers(int sel) {
+        changeUsers(m.getUsersChannel(channelNames[sel]));
+    }
+    
+    public String getMask() {
+        String n = (String)JOptionPane.showInputDialog(
+                    frame,
+                    "Enter netmask","Enter netmask:", 1);
+        
+        return n; 
+    }
+    public String getJoinChannel() {
         String n = (String)JOptionPane.showInputDialog(
                     frame,
                     "Enter channel to join: ","Join new channel", 1);
@@ -437,7 +536,42 @@ public class IRCView extends JPanel implements MouseListener,Observer {
         return n; 
     }
 
-    void setActiveTab(int sel) {
+    public void setActiveTab(int sel) {
         activeTab=sel;
     }
+
+    public void partChannel(String channelToPart) {
+        System.out.println(channelToPart);
+        for (int i = 0;i<=chanAmount;i++) {
+            System.out.println(channelNames[i]);
+            if ( channelNames[i].equals(channelToPart)) {
+                chanList.removeTabAt(i);
+            }
+        }
+        chanAmount--;
+        if (chanAmount > 0) {
+        for (int j = 1;j<channelNames.length-1;j++) {
+         channelNames[j] = channelNames[j+1];
+        }
+        }
+    }
+    
+    public int getSelectedServer() {
+        int buttons = serverGroup.getButtonCount();
+        int paluu = -1;
+        for (int i = 0; i <= buttons; i++) {
+            if (buttonList[i].isSelected()) {
+                int selectedServer = i;
+                paluu = i;
+            }
+        }
+        
+        return paluu;
+    }
+
+    public void setFocus() {
+        input.requestFocusInWindow();
+    }
+
+
 }

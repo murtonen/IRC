@@ -25,6 +25,36 @@ public class IRCController implements ActionListener,ChangeListener {
         model = m;
         view = v;
         
+        // Connect Listener
+        v.setConnectListener(new ActionListener() {
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String nick = v.getNick();
+                String server = v.getServer();
+                if (server != null && !server.equals("")) {
+                    try {
+                        m.connectToServer(server,nick);
+                        v.addToServerMenu(server);
+                        v.setFocus();
+                    } catch (IrcException ex) {
+                        Logger.getLogger(IRCController.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                }  
+            }
+        });
+        
+        // Connect Listener
+        v.setDisconnectListener(new ActionListener() {
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                m.disconnectServer(v.getSelectedServer());
+                m.updateActiveServer();
+                
+            }
+        });
+        
         // chanListListener
          v.setChanListListener(new ChangeListener() {
             @Override
@@ -38,25 +68,80 @@ public class IRCController implements ActionListener,ChangeListener {
             }
             });
         
-        // Kick Button Listener
-        v.setKickListener(new ActionListener() {
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String nick = v.getTarget();
-                m.kickTarget(nick);
-            }
-        });
-        
         // Join Button Listener
         v.setJoinButtonListener(new ActionListener() {
 
             @Override
             public void actionPerformed(ActionEvent e) {
                 String channelToJoin;
+                int index;
                 channelToJoin = v.getJoinChannel();
-                v.joinChannel(channelToJoin);
-                m.joinChannel(channelToJoin);
+                index = v.joinChannel(channelToJoin);
+                m.joinChannel(channelToJoin,index);
+                v.setFocus();
+            }
+        });
+             
+        // Part Button Listener
+        v.setPartButtonListener(new ActionListener() {
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String channelToPart;
+                channelToPart = m.getActiveChannel();
+                v.partChannel(channelToPart);
+                m.partChannel(channelToPart);
+            }
+        });
+        
+        // Kick Button Listener
+        v.setKickListener(new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String nick = v.getTarget();
+                m.kickTarget(nick);
+                m.updateUserList();
+            }
+        });
+        
+        // Op/Deop Button Listener
+        v.setOpListener(new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String nick = v.getTarget();
+                m.opOrDeop(nick);
+            }
+        });
+        
+        // Voice/DeVoice Button Listener
+        v.setVoiceListener(new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String nick = v.getTarget();
+                m.opOrDeop(nick);
+            }
+        });
+        
+        // Ban Button Listener
+        v.setBanListener(new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String mask = v.getMask();
+                m.ban(mask);
+            }
+        });
+        
+        // UnBan Button Listener
+        v.setUnBanListener(new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                String mask = v.getMask();
+                m.unban(mask);
             }
         });
         
@@ -69,10 +154,11 @@ public class IRCController implements ActionListener,ChangeListener {
                 String channel="";
                 String[] splitted;
                 input = v.getInput();    
+                int index;
                 if ( input.startsWith("/join")) {
                     splitted = input.split(" ");
-                    v.joinChannel(splitted[1]);
-                    m.joinChannel(splitted[1]);
+                    index = v.joinChannel(splitted[1]);
+                    m.joinChannel(splitted[1], index);
                     
                 } else {
                     channel = v.getActiveChannel();
@@ -83,23 +169,7 @@ public class IRCController implements ActionListener,ChangeListener {
             }
         });
         
-        // Connect Listener
-        v.setConnectListener(new ActionListener() {
-
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                String nick = v.getNick();
-                String server = v.getServer();
-                if (server != null && !server.equals("")) {
-                    try {
-                        m.connectToServer(server,nick);
-                        v.addToServerMenu(server);
-                    } catch (IrcException ex) {
-                        Logger.getLogger(IRCController.class.getName()).log(Level.SEVERE, null, ex);
-                    }
-                }  
-            }
-        });
+        
     }
     
     public void getUserList() {

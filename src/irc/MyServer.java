@@ -44,15 +44,36 @@ public class MyServer extends PircBot {
                       String sourceHostname,
                       String mode) {
         m.updateMode(channel,mode);
+        m.updateUserList();
     }
     
     public void log(String line) {
         m.sendLogLine(line);
     }
     
+    public void onJoin(String channel, String sender, String login, String hostname) {
+        if (!sender.equals(this.getNick()))
+        m.updateUserListOnJP(channel);
+    }
+    
+    public void onPart(String channel, String sender, String login, String hostname) {
+        if (!sender.equals(this.getNick()))
+        m.updateUserListOnJP(channel);
+    }
+    
+    public void onUserMode(String targetNick, String sourceNick, String sourceLogin, String sourceHostname, String mode) {
+        m.updateUserList();
+    }
+            
     public void onServerResponse(int code, String response) {
         if ( code == 324 ) {
             m.channelModeNotify(response);
         }
     }
+    
+    public void onPrivateMessage(String sender, String login, String hostname, String message) {
+        m.privateMessage(sender,message);
+    }
+    
+    
 }

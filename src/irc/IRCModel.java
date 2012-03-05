@@ -5,6 +5,7 @@
 package irc;
 
 import java.io.IOException;
+import java.util.ArrayList;
 import java.util.Observable;
 import java.util.logging.Level;
 import java.util.logging.Logger;
@@ -26,7 +27,9 @@ public class IRCModel extends Observable {
         private final String newLogLine = "newLogLine";
         private final String newChanMode = "newChanMode";
         private final String newMode = "newMode";
-        
+        private final String disconnected = "disconnected";
+        private final String privMessage = "privateMessage";
+        private final String joinPart = "joinPart";
         
         // Debuggausta varten
         MyServer ircnet;
@@ -38,9 +41,15 @@ public class IRCModel extends Observable {
         String logline;
         String response;
         String topicChannel;
+        String privateSender;
+        String privateMessage;
+        int disconnectedServer;
+        String mynick;
+        String joinPartChannel;
         
         // ServerLista ja servereiden määrä
         MyServer[] serverList;
+        Server[] Servers;
         int serverAmount;
         int activeServer;
         
@@ -55,6 +64,10 @@ public class IRCModel extends Observable {
         topic = "";
         response = "";
         topicChannel= "";
+        mynick="";
+        disconnectedServer=0;
+        joinPartChannel="";
+        Servers = new Server[50];
         
     }
     
@@ -76,10 +89,11 @@ public class IRCModel extends Observable {
         serverList[activeServer].sendMessage(channel,line);
     }
     
-    public void joinChannel (String nimi) {
-        serverList[activeServer].joinChannel(nimi);
+    public void joinChannel (String nimi, int index) {
         activeChannel = nimi;
+        serverList[activeServer].joinChannel(nimi);
         serverList[activeServer].sendRawLine("MODE " + nimi);
+        Servers[activeServer].addChannel(index);
     }
     
     public String getLine() {
@@ -87,7 +101,7 @@ public class IRCModel extends Observable {
     }
     
     public User[] getUsers() {
-        return serverList[activeServer].getUsers(serverList[activeServer].lastChannel);
+        return serverList[activeServer].getUsers(activeChannel);
     }
 
     public User[] getUsersChannel(String channel) {
@@ -114,10 +128,11 @@ public class IRCModel extends Observable {
     }
 
     public void connectToServer(String server, String n) throws IrcException {
-        String nick = n;
         serverList[serverAmount] = new MyServer(this);
         serverList[serverAmount].setVerbose(true);
         serverList[serverAmount].newNick(n);
+        mynick=n;
+        Servers[serverAmount] = new Server();
         try {
             serverList[serverAmount].connect(server);
         } catch (IOException ex) {
@@ -177,4 +192,86 @@ public class IRCModel extends Observable {
         return response;
     }
     
+    public void opOrDeop(String n) {
+        User[] users = serverList[activeServer].getUsers(activeChannel);
+        for (int i = 0;i<users.length;i++) {
+            if (users[i].getNick().equals(n)) {
+                if (users[i].isOp()) {
+                    serverList[activeServer].deOp(activeChannel, n);
+                } else {
+                    serverList[activeServer].op(activeChannel, n);
+                }
+            }
+        }
+    }
+    
+    public void voiceOrDevoice(String n) {
+        User[] users = serverList[activeServer].getUsers(activeChannel);
+        for (int i = 0;i<users.length;i++) {
+            if (users[i].hasVoice()) {
+                serverList[activeServer].deVoice(activeChannel, n);
+                } else {
+                serverList[activeServer].voice(activeChannel, n);
+            }
+        }
+    }
+    
+    public void ban(String mask) {
+        serverList[activeServer].ban(activeChannel, mask);
+    }
+    
+    public void unban(String mask) {
+        serverList[activeServer].unBan(activeChannel, mask);
+    }
+
+    public String getActiveChannel() {
+        return activeChannel;
+    }
+
+    public void partChannel(String channelToPart) {
+        serverList[activeServer].partChannel(channelToPart);
+    }
+
+    public void disconnectServer(int selectedServer) {
+        disconnectedServer = selectedServer;
+        setChanged();
+        notifyObservers(disconnected);
+        serverList[selectedServer].disconnect();
+        serverList[selectedServer].dispose();
+        serverAmount--;
+        
+    }
+    
+    public ArrayList getServerChannels(int selectedServer) {
+        return Servers[selectedServer].Channels();
+    }
+
+    public void updateActiveServer() {
+        activeServer=serverAmount;
+    }
+
+    public void privateMessage(String sender, String message) {
+        privateSender = sender;
+        privateMessage = message;
+        setChanged();
+        notifyObservers(privMessage);
+    }
+
+    public String getSender() {
+        return privateSender;
+    }
+
+    public String getMessage() {
+        return privateMessage;
+    }
+
+    public void updateUserListOnJP(String c) {
+        joinPartChannel=c;
+        setChanged();
+        notifyObservers(joinPart);
+    }
+    
+    public String getJoinPartChannel() {
+        return joinPartChannel;
+    }
 }
