@@ -274,6 +274,9 @@ public class IRCView extends JPanel implements MouseListener,Observer {
     
     // Mouseeventteja, ide tahtoi nama
     public void mousePressed(MouseEvent e) {
+        if ( e.getButton() == MouseEvent.BUTTON3) {
+            popup.show( e.getComponent(), e.getX(), e.getY() );
+        }
     }
  
     public void mouseReleased(MouseEvent e) {
@@ -374,6 +377,7 @@ public class IRCView extends JPanel implements MouseListener,Observer {
             }
         // disconnectoiduttu serverilta, poistetaan kaikki ko serverin tabit    
         } else if (msg.equals("disconnected")) {
+            serverAmount--;
             int index;
             int remove = this.getSelectedServer();
             ArrayList toBeRemoved=m.getServerChannels(selectedServer);
@@ -382,6 +386,7 @@ public class IRCView extends JPanel implements MouseListener,Observer {
                 chanList.remove(index);
             }
             Server.remove(buttonList[remove]);
+            JOptionPane.showMessageDialog(frame, "Disconnected from Server!");
             if ( serverAmount != 0 ) 
                 buttonList[serverAmount].setSelected(true);
         }  else if ( msg.equals("privateMessage")) { // Privatemessage, haetaan tiedot ja viesti modelista
