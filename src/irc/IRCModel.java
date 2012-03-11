@@ -247,6 +247,7 @@ public class IRCModel extends Observable {
     public void reconnect() throws IrcException {
         try {
             serverList[activeServer].reconnect();
+            connected = true;
         } catch (IOException ex) {
             Logger.getLogger(IRCModel.class.getName()).log(Level.SEVERE, null, ex);
         } catch (NickAlreadyInUseException ex) {

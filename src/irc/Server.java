@@ -21,14 +21,14 @@ public class Server {
     
     // Kanavan lisays listaan
     public void addChannel(int i) {
-        int index = i;
-        channels.add(index);
+        channels.add(i);
     }
     
     // Kanavan poisto listasta
     public void removeChannel(int i) {
-        int index = i;
-        channels.remove(index);
+        if (!channels.isEmpty()) {
+        channels.remove((Object)i);
+        }
     }
     
     // Listan palautus
