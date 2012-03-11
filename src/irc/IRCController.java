@@ -1,6 +1,6 @@
 /*
- * To change this template, choose Tools | Templates
- * and open the template in the editor.
+ * Controller luokassa toteutetaan ohjelman "aly", eli viestien valitys
+ * ja niiden kasittely viewin ja modelin valilla
  */
 package irc;
 
@@ -18,12 +18,17 @@ import org.jibble.pircbot.IrcException;
  * @author Ville Murtonen
  */
 public class IRCController implements ActionListener,ChangeListener {
+    // Maaritellaan kayttoon Model ja View
     IRCModel model;
     IRCView view;
     
     public IRCController (final IRCModel m, final IRCView v) {
+        // Asetetaan paaohjelmasta saadut model ja view paikalleen
         model = m;
         view = v;
+        
+        // Connectorit on toteutettu inject tyyppisesti, eli view toteuttaa metodit
+        // listenerin lisaamiseksi ja controllerissa ne asetetaan, jotta actionperformed saadaan tanne
         
         // Connect Listener
         v.setConnectListener(new ActionListener() {
@@ -36,6 +41,13 @@ public class IRCController implements ActionListener,ChangeListener {
                     try {
                         m.connectToServer(server,nick);
                         v.addToServerMenu(server);
+                        v.setServerItemListener(new ActionListener() {
+                        
+                            @Override
+                            public void actionPerformed(ActionEvent e) {
+                                m.setActiveServer(v.getIndex());
+                            }
+                        });
                         v.setFocus();
                     } catch (IrcException ex) {
                         Logger.getLogger(IRCController.class.getName()).log(Level.SEVERE, null, ex);
@@ -44,19 +56,41 @@ public class IRCController implements ActionListener,ChangeListener {
             }
         });
         
-        // Connect Listener
+        // DiscConnect Listener
         v.setDisconnectListener(new ActionListener() {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (m.isConnected()) {
                 m.disconnectServer(v.getSelectedServer());
                 m.updateActiveServer();
+                } else {
+                    v.cannotDisconnect();
+                }
+                
+            }
+        });
+        
+        // ReConnect Listener
+        v.setReconnectListener(new ActionListener() {
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                if (m.canReconnect()) {
+                    try {
+                        m.reconnect();
+                    } catch (IrcException ex) {
+                        Logger.getLogger(IRCController.class.getName()).log(Level.SEVERE, null, ex);
+                    }
+                } else {
+                    v.cannotReconnect();
+                }
                 
             }
         });
         
         // chanListListener
-         v.setChanListListener(new ChangeListener() {
+        v.setChanListListener(new ChangeListener() {
             @Override
             public void  stateChanged(ChangeEvent e) {
                 // Get current tab
@@ -64,21 +98,33 @@ public class IRCController implements ActionListener,ChangeListener {
                 v.setActiveTab(sel);
                 v.clearListModel();   
                 v.channelChange(sel);
-                
             }
-            });
+        });
+         
+        // Connect Listener
+        v.setPreferencesListener(new ActionListener() {
+
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                v.getPreferences();
+            }
+        });
         
         // Join Button Listener
         v.setJoinButtonListener(new ActionListener() {
 
             @Override
             public void actionPerformed(ActionEvent e) {
+                if (m.isConnected()) {
                 String channelToJoin;
                 int index;
                 channelToJoin = v.getJoinChannel();
                 index = v.joinChannel(channelToJoin);
                 m.joinChannel(channelToJoin,index);
                 v.setFocus();
+                } else {
+                    v.noServer();
+                }
             }
         });
              
@@ -87,10 +133,12 @@ public class IRCController implements ActionListener,ChangeListener {
 
             @Override
             public void actionPerformed(ActionEvent e) {
-                String channelToPart;
-                channelToPart = m.getActiveChannel();
-                v.partChannel(channelToPart);
-                m.partChannel(channelToPart);
+                if (m.isConnected()) {
+                    int indexPart = v.partChannelIndex();
+                    m.partChannel(v.partChannel(),indexPart);
+                } else {
+                    v.noServer();
+                }
             }
         });
         
@@ -121,7 +169,7 @@ public class IRCController implements ActionListener,ChangeListener {
             @Override
             public void actionPerformed(ActionEvent e) {
                 String nick = v.getTarget();
-                m.opOrDeop(nick);
+                m.voiceOrDevoice(nick);
             }
         });
         
@@ -169,18 +217,38 @@ public class IRCController implements ActionListener,ChangeListener {
             }
         });
         
-        
+        // UnBan Button Listener
+        v.setQuitListener(new ActionListener() {
+            
+            @Override
+            public void actionPerformed(ActionEvent e) {
+                try {
+                m.quit();
+                } catch (Exception ex) {
+                    
+                }
+                try {
+                v.quit();
+                } catch (Exception ex) {
+                    
+                }
+                System.exit(0);
+            }
+        });
     }
     
+    // Should not be used! Debugging. (Yes, left it here.)
     public void getUserList() {
         //return model.getUserList();
     }
 
+    // No need but netbeans wanted these
     @Override
     public void actionPerformed(ActionEvent e) {
         throw new UnsupportedOperationException("Not supported yet.");
     }
 
+    // No need but netbeans wanted these
     @Override
     public void stateChanged(ChangeEvent e) {
         throw new UnsupportedOperationException("Not supported yet.");
